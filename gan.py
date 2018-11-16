@@ -580,7 +580,7 @@ def training_steps_GAN(model_components):
         # Determine xgb loss each step, after training generator and discriminator
         if not i % 10: # 2x faster than testing each step...
             K.set_learning_phase(0) # 0 = test
-            test_size = 940 # test using all of the actual fraud data
+            test_size = 2377 # test using all of the actual diabetes data
             x = get_data_batch(train, test_size, seed=i)
             z = np.random.normal(size=(test_size, rand_dim))
             if with_class:
