@@ -89,20 +89,20 @@ def CheckAccuracy(x, g_z, data_cols, label_cols=[], seed=0, with_class=False, da
         [x[:int(len(x) / 2)], g_z[:int(len(g_z) / 2)]])  # Use half of each real and generated set for training
     dlabels = np.hstack([np.zeros(int(len(x) / 2)), np.ones(int(len(g_z) / 2))])  # synthetic labels
     dtest = np.vstack([x[int(len(x) / 2):], g_z[int(len(g_z) / 2):]])  # Use the other half of each set for testing
-    y_true = dlabels  # Labels for test samples will be the same as the labels for training samples, assuming even batch sizes
-
+    y_true = dlabels
+    # Labels for test samples will be the same as the labels for training samples, assuming even batch sizes
 
     dtrain = xgb.DMatrix(dtrain, dlabels)
     dtest = xgb.DMatrix(dtest)
 
     xgb_params = {
         # 'tree_method': 'hist', # for faster evaluation
-        'max_depth': 4, # for faster evaluation
+        'max_depth': 4,  # for faster evaluation
         'objective': 'binary:logistic',
         'random_state': 0,
-        'eval_metric': 'auc', # allows for balanced or unbalanced classes
+        'eval_metric': 'auc',  # allows for balanced or unbalanced classes
         }
-    xgb_test = xgb.train(xgb_params, dtrain, num_boost_round=10) # limit to ten rounds for faster evaluation
+    xgb_test = xgb.train(xgb_params, dtrain, num_boost_round=10)  # limit to ten rounds for faster evaluation
 
     y_pred = np.round(xgb_test.predict(dtest))
     '''
@@ -146,8 +146,8 @@ def CheckAccuracy(x, g_z, data_cols, label_cols=[], seed=0, with_class=False, da
     preds_val_t = (preds_val > 0.5).astype(np.uint8)
     preds_test_t = (preds_test > 0.5).astype(np.uint8)
 '''
-    return (SimpleAccuracy(y_pred, y_true)) # assumes balanced real and generated datasets
-    #return SimpleAccuracy(preds_test_t, y_test)  # assumes balanced real and generated datasets
+    return SimpleAccuracy(y_pred, y_true)  # assumes balanced real and generated datasets
+    # return SimpleAccuracy(preds_test_t, y_test)  # assumes balanced real and generated datasets
 
 
 def PlotData(x, g_z, data_cols, label_cols=[], seed=0, with_class=False, data_dim=2, save=False, prefix=''):
@@ -156,9 +156,9 @@ def PlotData(x, g_z, data_cols, label_cols=[], seed=0, with_class=False, data_di
 
     f, axarr = plt.subplots(1, 2, figsize=(6, 2))
     if with_class:
-        axarr[0].scatter(real_samples[data_cols[0]], real_samples[data_cols[1]],
+        axarr[0].scatter(real_samples[data_cols[264]], real_samples[data_cols[1]],
                          c=real_samples[label_cols[0]] / 2)  # , cmap='plasma'  )
-        axarr[1].scatter(gen_samples[data_cols[0]], gen_samples[data_cols[1]],
+        axarr[1].scatter(gen_samples[data_cols[264]], gen_samples[data_cols[1]],
                          c=gen_samples[label_cols[0]] / 2)  # , cmap='plasma'  )
 
         # For when there are multiple one-hot encoded label columns
@@ -169,12 +169,12 @@ def PlotData(x, g_z, data_cols, label_cols=[], seed=0, with_class=False, data_di
         # axarr[1].scatter( temp[data_cols[0]], temp[data_cols[1]], c='C'+str(i), label=i )
 
     else:
-        axarr[0].scatter(real_samples[data_cols[0]], real_samples[data_cols[1]])  # , cmap='plasma'  )
-        axarr[1].scatter(gen_samples[data_cols[0]], gen_samples[data_cols[1]])  # , cmap='plasma'  )
+        axarr[0].scatter(real_samples[data_cols[264]], real_samples[data_cols[48]])  # , cmap='plasma'  )
+        axarr[1].scatter(gen_samples[data_cols[264]], gen_samples[data_cols[48]])  # , cmap='plasma'  )
     axarr[0].set_title('real')
     axarr[1].set_title('generated')
-    axarr[0].set_ylabel(data_cols[1])  # Only add y label to left plot
-    for a in axarr: a.set_xlabel(data_cols[0])  # Add x label to both plots
+    axarr[0].set_ylabel(data_cols[48])  # Only add y label to left plot
+    for a in axarr: a.set_xlabel(data_cols[264])  # Add x label to both plots
     axarr[1].set_xlim(axarr[0].get_xlim()), axarr[1].set_ylim(
         axarr[0].get_ylim())  # Use axes ranges from real data for generated data
 
@@ -184,12 +184,18 @@ def PlotData(x, g_z, data_cols, label_cols=[], seed=0, with_class=False, data_di
     plt.show()
 
 
-#### Functions to define the layers of the networks used in the 'define_models' functions below
+# Functions to define the layers of the networks used in the 'define_models' functions below
 
 def generator_network(x, data_dim, base_n_count):
     x = layers.Dense(base_n_count, activation='relu')(x)
+    x = layers.LeakyReLU(alpha=0.2)(x)
+    x = layers.BatchNormalization(momentum=0.8)(x)
     x = layers.Dense(base_n_count * 2, activation='relu')(x)
+    x = layers.LeakyReLU(alpha=0.2)(x)
+    x = layers.BatchNormalization(momentum=0.8)(x)
     x = layers.Dense(base_n_count * 4, activation='relu')(x)
+    x = layers.Dense(base_n_count * 4, activation='relu')(x)
+    x = layers.Dense(base_n_count * 8, activation='relu')(x)
     x = layers.Dense(data_dim)(x)
     return x
 
@@ -197,12 +203,24 @@ def generator_network(x, data_dim, base_n_count):
 def generator_network_w_label(x, labels, data_dim, label_dim, base_n_count):
     x = layers.concatenate([x, labels])
     x = layers.Dense(base_n_count * 1, activation='relu')(x)  # 1
+    # x = layers.LeakyReLU(alpha=0.2)(x)
+    # x = layers.BatchNormalization(momentum=0.8)(x)
     x = layers.Dense(base_n_count * 2, activation='relu')(x)  # 2
+    # x = layers.LeakyReLU(alpha=0.2)(x)
+    # x = layers.BatchNormalization(momentum=0.8)(x)
     x = layers.Dense(base_n_count * 4, activation='relu')(x)
+    # x = layers.LeakyReLU(alpha=0.2)(x)
+    # x = layers.BatchNormalization(momentum=0.8)(x)
     x = layers.Dropout(0.2)(x)
-    x = layers.Dense(base_n_count * 4, activation='relu')(x) # extra
+    x = layers.Dense(base_n_count * 4, activation='relu')(x)
+    # x = layers.LeakyReLU(alpha=0.2)(x)
+    # x = layers.BatchNormalization(momentum=0.8)(x)
     x = layers.Dropout(0.2)(x)
-    x = layers.Dense(base_n_count * 8, activation='relu')(x) # extra
+    x = layers.Dense(base_n_count * 8, activation='relu')(x)
+    # x = layers.Dense(base_n_count * 8, activation='relu')(x)
+    # x = layers.Dense(base_n_count * 8, activation='relu')(x)  # 2
+    # x = layers.LeakyReLU(alpha=0.2)(x)
+    # x = layers.BatchNormalization(momentum=0.8)(x)
     x = layers.Dense(data_dim)(x)
     x = layers.concatenate([x, labels])
     return x
@@ -214,6 +232,8 @@ def discriminator_network(x, data_dim, base_n_count):
     x = layers.Dense(base_n_count * 2, activation='relu')(x)
     x = layers.Dropout(0.1)(x)
     x = layers.Dense(base_n_count, activation='relu')(x)
+    x = layers.Dense(base_n_count * 4, activation='relu')(x)  # extra
+    x = layers.Dense(base_n_count * 8, activation='relu')(x)  # extra
     x = layers.Dense(1, activation='sigmoid')(x)
     # x = layers.Dense(1)(x)
     return x
@@ -221,12 +241,25 @@ def discriminator_network(x, data_dim, base_n_count):
 
 def critic_network(x, data_dim, base_n_count):
     x = layers.Dense(base_n_count * 4, activation='relu')(x)
+    # x = layers.LeakyReLU(alpha=0.2)(x)
+    # x = layers.BatchNormalization(momentum=0.8)(x)
     x = layers.Dropout(0.1)(x)
     x = layers.Dense(base_n_count * 2, activation='relu')(x)  # 2
+    # x = layers.LeakyReLU(alpha=0.2)(x)
+    # x = layers.BatchNormalization(momentum=0.8)(x)
     x = layers.Dropout(0.1)(x)
     x = layers.Dense(base_n_count * 1, activation='relu')(x)  # 1
-    x = layers.Dense(base_n_count * 4, activation='relu')(x) # extra
-    x = layers.Dense(base_n_count * 8, activation='relu')(x) # extra
+    # x = layers.LeakyReLU(alpha=0.2)(x)
+    # x = layers.BatchNormalization(momentum=0.8)(x)
+    x = layers.Dense(base_n_count * 4, activation='relu')(x)  # extra
+    # x = layers.LeakyReLU(alpha=0.2)(x)
+    # x = layers.BatchNormalization(momentum=0.8)(x)
+    x = layers.Dense(base_n_count * 8, activation='relu')(x)  # extra
+    x = layers.Dense(base_n_count * 8, activation='relu')(x)  # extra
+    # x = layers.Dense(base_n_count * 8, activation='relu')(x)  # 2
+    # x = layers.Dense(base_n_count * 8, activation='relu')(x)  # 1
+    # x = layers.LeakyReLU(alpha=0.2)(x)
+    # x = layers.BatchNormalization(momentum=0.8)(x)
     x = layers.Dense(1, activation='sigmoid')(x)
     # x = layers.Dense(1)(x)
     return x
@@ -247,7 +280,7 @@ def classify_network(x, base_n_count):
     return x
 
 
-#### Functions to define the keras network models
+# Functions to define the keras network models
 
 def define_models_GAN(rand_dim, data_dim, base_n_count, type=None):
     generator_input_tensor = layers.Input(shape=(rand_dim,))
@@ -299,8 +332,8 @@ def define_models_CGAN(rand_dim, data_dim, label_dim, base_n_count, type=None):
     return generator_model, discriminator_model, combined_model
 
 
-#### Functions specific to the WGAN architecture
-#### The train discrimnator step is separated out to facilitate pre-training of the discriminator by itself
+# Functions specific to the WGAN architecture
+# The train discriminator step is separated out to facilitate pre-training of the discriminator by itself
 
 def em_loss(y_coefficients, y_pred):
     # define earth mover distance (wasserstein loss)
@@ -329,7 +362,7 @@ def train_discriminator_step(model_components, seed=0):
             _z: np.random.normal(size=(batch_size, rand_dim)),
             _x: get_data_batch(train, batch_size, seed=seed),
             _labels: get_data_batch(train, batch_size, seed=seed)[:, -label_dim:],
-        # .reshape(-1,label_dim), # updated for class
+         # .reshape(-1,label_dim), # updated for class
             epsilon: np.random.uniform(low=0.0, high=1.0, size=(batch_size, 1))
         })
     else:
@@ -479,7 +512,7 @@ def adversarial_training_WGAN(arguments, train, data_cols, label_cols=[], seed=0
     # update f by taking an SGD step on mini-batch loss LD(f)
     disc_optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.9, beta2=0.999).minimize(
         _disc_loss, var_list=discriminator_model.trainable_weights)
-    #disc_optimizer = optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=None, decay=0.0).minimize(
+    # disc_optimizer = optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=None, decay=0.0).minimize(
     #    _disc_loss, var_list=discriminator_model.trainable_weights)
 
     sess = K.get_session()
@@ -547,7 +580,7 @@ def adversarial_training_WGAN(arguments, train, data_cols, label_cols=[], seed=0
     [combined_loss, disc_loss_generated, disc_loss_real, xgb_losses] = training_steps_WGAN(model_components)
 
 
-#### Functions specific to the vanilla GAN architecture
+# Functions specific to the vanilla GAN architecture
 
 def training_steps_GAN(model_components):
     [cache_prefix, with_class, starting_step,
@@ -573,14 +606,17 @@ def training_steps_GAN(model_components):
                 g_z = generator_model.predict([z, labels])
             else:
                 g_z = generator_model.predict(z)
-            #             x = np.vstack([x,g_z]) # code to train the discriminator on real and generated data at the same time, but you have to run network again for separate losses
+            #             x = np.vstack([x,g_z]) # code to train the discriminator on real
+            #             and generated data at the same time, but have to run network again for separate losses
             #             classes = np.hstack([np.zeros(batch_size),np.ones(batch_size)])
             #             d_l_r = discriminator_model.train_on_batch(x, classes)
 
             d_l_r = discriminator_model.train_on_batch(x, np.random.uniform(low=0.999, high=1.0,
-                                                                            size=batch_size))  # 0.7, 1.2 # GANs need noise to prevent loss going to zero
+                                                                            size=batch_size))  # 0.7, 1.2
+            # GANs need noise to prevent loss going to zero
             d_l_g = discriminator_model.train_on_batch(g_z, np.random.uniform(low=0.0, high=0.001,
-                                                                              size=batch_size))  # 0.0, 0.3 # GANs need noise to prevent loss going to zero
+                                                                              size=batch_size))  # 0.0, 0.3
+            # GANs need noise to prevent loss going to zero
             # d_l_r = discriminator_model.train_on_batch(x, np.ones(batch_size)) # without noise
             # d_l_g = discriminator_model.train_on_batch(g_z, np.zeros(batch_size)) # without noise
         disc_loss_real.append(d_l_r)
@@ -593,17 +629,19 @@ def training_steps_GAN(model_components):
             if with_class:
                 # loss = combined_model.train_on_batch([z, labels], np.ones(batch_size)) # without noise
                 loss = combined_model.train_on_batch([z, labels], np.random.uniform(low=0.999, high=1.0,
-                                                                                    size=batch_size))  # 0.7, 1.2 # GANs need noise to prevent loss going to zero
+                                                                                    size=batch_size))  # 0.7, 1.2
+                # GANs need noise to prevent loss going to zero
             else:
                 # loss = combined_model.train_on_batch(z, np.ones(batch_size)) # without noise
                 loss = combined_model.train_on_batch(z, np.random.uniform(low=0.999, high=1.0,
-                                                                          size=batch_size))  # 0.7, 1.2 # GANs need noise to prevent loss going to zero
+                                                                          size=batch_size))  # 0.7, 1.2
+                # GANs need noise to prevent loss going to zero
         combined_loss.append(loss)
 
         # Determine xgb loss each step, after training generator and discriminator
         if not i % 10:  # 2x faster than testing each step...
             K.set_learning_phase(0)  # 0 = test
-            test_size = 2377  # test using all of the actual diabetes data
+            test_size = 2378  # test using all of the actual diabetes data
             x = get_data_batch(train, test_size, seed=i)
             z = np.random.normal(size=(test_size, rand_dim))
             if with_class:
@@ -713,9 +751,9 @@ def adversarial_training_GAN(arguments, train, data_cols, label_cols=[], seed=0,
     [combined_loss, disc_loss_generated, disc_loss_real, xgb_losses] = training_steps_GAN(model_components)
 
 
-#### Functions specific to the DRAGAN architecture
-#### Note the DRAGAN is implemented in tensorflow without Keras libraries
-#### https://github.com/kodalinaveen3/DRAGAN
+# Functions specific to the DRAGAN architecture
+# Note the DRAGAN is implemented in tensorflow without Keras libraries
+# https://github.com/kodalinaveen3/DRAGAN
 
 def sample_z(m, n):  # updated to normal distribution
     #     return np.random.uniform(-1., 1., size=[m, n])
@@ -758,7 +796,8 @@ def define_DRAGAN_network(X_dim=2, h_dim=128, z_dim=2, lambda0=10, learning_rate
     D_W, D_b = [], []
     for i in range(len(D_layer_dims) - 1):
         D_W.append(tf.Variable(xavier_init([D_layer_dims[i], D_layer_dims[i + 1]]), name='D_W' + str(i)))
-        #     D_W.append( tf.Variable(  initializer=tf.contrib.layers.xavier_initializer(seed=global_seed) ) # working towards using tf's own xavier initializer
+        #     D_W.append( tf.Variable(  initializer=tf.contrib.layers.xavier_initializer(seed=global_seed) )
+        # working towards using tf's own xavier initializer
         D_b.append(tf.Variable(tf.zeros(shape=[D_layer_dims[i + 1]]), name='D_b' + str(i)))
     theta_D = D_W + D_b
 
